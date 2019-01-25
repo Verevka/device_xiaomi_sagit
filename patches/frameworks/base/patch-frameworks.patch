@@ -1,0 +1,162 @@
+From c26e30b32b67e1f82b91bc6bc4153fe6cc4c1664 Mon Sep 17 00:00:00 2001
+From: xyyx <xyyx@mail.ru>
+Date: Tue, 8 Jan 2019 11:06:30 +0000
+Subject: [PATCH] BoostFramework: Add debug to hide logcat spam on devices
+ without QPerformance
+
+---
+ core/java/android/util/BoostFramework.java | 33 +++++++++++-----------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
+
+diff --git a/core/java/android/util/BoostFramework.java b/core/java/android/util/BoostFramework.java
+index a0afd687654..06ea2745231 100644
+--- a/core/java/android/util/BoostFramework.java
++++ b/core/java/android/util/BoostFramework.java
+@@ -39,6 +39,7 @@
+ /** @hide */
+ public class BoostFramework {
+ 
++    private static final boolean DEBUG = false;
+     private static final String TAG = "BoostFramework";
+     private static final String PERFORMANCE_JAR = "/system/framework/QPerformance.jar";
+     private static final String PERFORMANCE_CLASS = "com.qualcomm.qti.Performance";
+@@ -138,7 +139,7 @@ public BoostFramework() {
+             }
+         }
+         catch(Exception e) {
+-            Log.e(TAG,"BoostFramework() : Exception_2 = " + e);
++           if (DEBUG) Log.e(TAG,"BoostFramework() : Exception_2 = " + e);
+         }
+     }
+ 
+@@ -157,7 +158,7 @@ public BoostFramework(Context context) {
+             }
+         }
+         catch(Exception e) {
+-            Log.e(TAG,"BoostFramework() : Exception_3 = " + e);
++           if (DEBUG) Log.e(TAG,"BoostFramework() : Exception_3 = " + e);
+         }
+     }
+ 
+@@ -176,7 +177,7 @@ public BoostFramework(boolean isUntrustedDomain) {
+             }
+         }
+         catch(Exception e) {
+-            Log.e(TAG,"BoostFramework() : Exception_5 = " + e);
++           if (DEBUG) Log.e(TAG,"BoostFramework() : Exception_5 = " + e);
+         }
+     }
+ 
+@@ -216,13 +217,13 @@ private void initFunctions () {
+                         sUXEngineTrigger =  sPerfClass.getDeclaredMethod("perfUXEngine_trigger",
+                                                                            argClasses);
+                     } catch (Exception e) {
+-                        Log.i(TAG, "BoostFramework() : Exception_4 = PreferredApps not supported");
++                       if (DEBUG) Log.i(TAG, "BoostFramework() : Exception_4 = PreferredApps not supported");
+                     }
+ 
+                     sIsLoaded = true;
+                 }
+                 catch(Exception e) {
+-                    Log.e(TAG,"BoostFramework() : Exception_1 = " + e);
++                   if (DEBUG) Log.e(TAG,"BoostFramework() : Exception_1 = " + e);
+                 }
+                 // Load UXE Class now Adding new try/catch block to avoid
+                 // any interference with Qperformance
+@@ -235,7 +236,7 @@ private void initFunctions () {
+                     sUxIsLoaded = true;
+                 }
+                 catch(Exception e) {
+-                    Log.e(TAG,"BoostFramework() Ux Perf: Exception = " + e);
++                   if (DEBUG) Log.e(TAG,"BoostFramework() Ux Perf: Exception = " + e);
+                 }
+             }
+         }
+@@ -250,7 +251,7 @@ public int perfLockAcquire(int duration, int... list) {
+                 ret = (int)retVal;
+             }
+         } catch(Exception e) {
+-            Log.e(TAG,"Exception " + e);
++           if (DEBUG) Log.e(TAG,"Exception " + e);
+         }
+         return ret;
+     }
+@@ -264,7 +265,7 @@ public int perfLockRelease() {
+                 ret = (int)retVal;
+             }
+         } catch(Exception e) {
+-            Log.e(TAG,"Exception " + e);
++           if (DEBUG) Log.e(TAG,"Exception " + e);
+         }
+         return ret;
+     }
+@@ -278,7 +279,7 @@ public int perfLockReleaseHandler(int handle) {
+                 ret = (int)retVal;
+             }
+         } catch(Exception e) {
+-            Log.e(TAG,"Exception " + e);
++           if (DEBUG) Log.e(TAG,"Exception " + e);
+         }
+         return ret;
+     }
+@@ -302,7 +303,7 @@ public int perfHint(int hint, String userDataStr, int userData1, int userData2)
+                 ret = (int)retVal;
+             }
+         } catch(Exception e) {
+-            Log.e(TAG,"Exception " + e);
++           if (DEBUG) Log.e(TAG,"Exception " + e);
+         }
+         return ret;
+     }
+@@ -316,7 +317,7 @@ public int perfGetFeedback(int req, String userDataStr) {
+                 ret = (int)retVal;
+             }
+         } catch(Exception e) {
+-            Log.e(TAG,"Exception " + e);
++           if (DEBUG) Log.e(TAG,"Exception " + e);
+         }
+         return ret;
+     }
+@@ -328,13 +329,13 @@ public int perfIOPrefetchStart(int pid, String pkgName, String codePath) {
+             Object retVal = sIOPStart.invoke(mPerf, pid, pkgName, codePath);
+             ret = (int) retVal;
+         } catch (Exception e) {
+-            Log.e(TAG, "Exception " + e);
++           if (DEBUG) Log.e(TAG,"Exception " + e);
+         }
+         try {
+             Object retVal = sUxIOPStart.invoke(mUxPerf, pid, pkgName, codePath);
+             ret = (int) retVal;
+         } catch (Exception e) {
+-            Log.e(TAG, "Ux Perf Exception " + e);
++           if (DEBUG) Log.e(TAG, "Ux Perf Exception " + e);
+         }
+ 
+         return ret;
+@@ -347,7 +348,7 @@ public int perfIOPrefetchStop() {
+             Object retVal = sIOPStop.invoke(mPerf);
+             ret = (int) retVal;
+         } catch (Exception e) {
+-            Log.e(TAG, "Exception " + e);
++           if (DEBUG) Log.e(TAG, "Exception " + e);
+         }
+         return ret;
+     }
+@@ -365,7 +366,7 @@ public int perfUXEngine_events(int opcode, int pid, String pkgName, int lat) {
+             Object retVal = sUXEngineEvents.invoke(mPerf, opcode, pid, pkgName, lat);
+             ret = (int) retVal;
+         } catch (Exception e) {
+-            Log.e(TAG, "Exception " + e);
++           if (DEBUG) Log.e(TAG, "Exception " + e);
+         }
+         return ret;
+     }
+@@ -384,7 +385,7 @@ public String perfUXEngine_trigger(int opcode) {
+             Object retVal = sUXEngineTrigger.invoke(mPerf, opcode);
+             ret = (String) retVal;
+         } catch (Exception e) {
+-            Log.e(TAG, "Exception " + e);
++           if (DEBUG) Log.e(TAG, "Exception " + e);
+         }
+         return ret;
+     }
