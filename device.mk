@@ -45,6 +45,10 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     init.sagit.rc
 
+# ThermalController
+PRODUCT_PACKAGES += \
+    ThermalController
+
 # TFA calibration
 PRODUCT_PACKAGES += \
     init.tfa.sh \

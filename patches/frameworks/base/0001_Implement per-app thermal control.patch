@@ -1,0 +1,215 @@
+From 77ceb044d43e3fe939aa0804662b86400857f7ee Mon Sep 17 00:00:00 2001
+From: TheScarastic <warabhishek@gmail.com>
+Date: Wed, 2 Jan 2019 18:21:52 +0530
+Subject: [PATCH] Implement per-app thermal control [2/3]
+
+@jhenrique09: First part are on settings and the third on packages/apps/ThermalControl
+
+Active package code by @warabhishek - Original commit:
+
+services: am: Add intent for active package name [2/2]
+
+Change-Id: Ifc3dcab71a8500307d0157d4b143415dd1d25543
+Co-authored-by: Henrique Silva <jhenrique09.mcz@hotmail.com>
+
+# Conflicts:
+#	core/res/AndroidManifest.xml
+#	packages/SettingsLib/src/com/android/settingslib/Utils.java
+#	services/core/java/com/android/server/am/ActivityStack.java
+---
+ .../custom/thermal/ThermalController.java     | 84 +++++++++++++++++++
+ core/res/AndroidManifest.xml                  |  2 +
+ .../src/com/android/settingslib/Utils.java    |  3 +
+ .../server/am/ActivityManagerService.java     |  5 ++
+ .../com/android/server/am/ActivityStack.java  | 10 ++-
+ .../com/android/server/power/Notifier.java    |  3 +
+ 6 files changed, 105 insertions(+), 2 deletions(-)
+ create mode 100644 core/java/com/android/internal/util/custom/thermal/ThermalController.java
+
+diff --git a/core/java/com/android/internal/util/custom/thermal/ThermalController.java b/core/java/com/android/internal/util/custom/thermal/ThermalController.java
+new file mode 100644
+index 00000000000..5ff33b801ac
+--- /dev/null
++++ b/core/java/com/android/internal/util/custom/thermal/ThermalController.java
+@@ -0,0 +1,84 @@
++/*
++ * Copyright (C) 2019 The PixelExperience Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program. If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package com.android.internal.util.custom.thermal;
++
++import android.content.ContentValues;
++import android.content.Context;
++import android.content.pm.PackageManager;
++import android.database.Cursor;
++import android.net.Uri;
++import android.content.Intent;
++import android.os.UserHandle;
++
++public class ThermalController {
++
++    public static final String SERVICE_PACKAGE = "org.pixelexperience.thermalcontroller";
++    public static final String ACTIVE_PACKAGE_CHANGED_ACTION = "android.intent.action.ACTIVE_PACKAGE_CHANGED";
++    public static final String ACTIVE_PACKAGE_CHANGED_EXTRA = "package_name";
++    public static final String AUTHORITY = "org.pixelexperience.thermalcontroller";
++    public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/preferences");
++    public static final String COLUMN_PROFILE = "profile";
++    public static final String[] PROJECTION_DEFAULT = new String[]{COLUMN_PROFILE};
++
++    public static boolean isAvailable(Context context) {
++        final PackageManager pm = context.getPackageManager();
++        try {
++            pm.getPackageInfo(SERVICE_PACKAGE, PackageManager.GET_ACTIVITIES);
++            int enabled = pm.getApplicationEnabledSetting(SERVICE_PACKAGE);
++            return enabled != PackageManager.COMPONENT_ENABLED_STATE_DISABLED &&
++                    enabled != PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER;
++        } catch (PackageManager.NameNotFoundException e) {
++            return false;
++        }
++    }
++
++    public static void setProfile(String packageName, int profile, Context context) {
++        ContentValues values = new ContentValues();
++        values.put(COLUMN_PROFILE, profile);
++        context.getContentResolver().insert(Uri.parse(CONTENT_URI + "/" + packageName), values);
++    }
++
++    public static int getProfile(String packageName, Context context) {
++        Cursor c = context.getContentResolver().query(Uri.parse(CONTENT_URI + "/" + packageName), PROJECTION_DEFAULT,
++                null, null, null);
++        if (c != null) {
++            try {
++                int count = c.getCount();
++                if (count > 0) {
++                    for (int i = 0; i < count; i++) {
++                        c.moveToPosition(i);
++                        if (i == 0) {
++                            return c.getInt(0);
++                        }
++                    }
++                }
++            } finally {
++                c.close();
++            }
++        }
++        return 0;
++    }
++
++    public static void sendActivePackageChangedBroadcast(String packageName, Context context) {
++        Intent intent = new Intent(ACTIVE_PACKAGE_CHANGED_ACTION);
++        intent.putExtra(ACTIVE_PACKAGE_CHANGED_EXTRA, packageName);
++        intent.setFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
++        context.sendBroadcastAsUser(intent, UserHandle.SYSTEM);
++    }
++}
+diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
+index 971e0e860b7..d6ee9b82003 100644
+--- a/core/res/AndroidManifest.xml
++++ b/core/res/AndroidManifest.xml
+@@ -634,6 +634,8 @@
+     <!-- For IdleController -->
+     <protected-broadcast android:name="android.intent.action.DOCK_IDLE" />
+     <protected-broadcast android:name="android.intent.action.DOCK_ACTIVE" />
++    <!-- Used to get active package name. -->
++    <protected-broadcast android:name="android.intent.action.ACTIVE_PACKAGE_CHANGED" />
+ 
+     <!-- ====================================================================== -->
+     <!--                          RUNTIME PERMISSIONS                           -->
+diff --git a/packages/SettingsLib/src/com/android/settingslib/Utils.java b/packages/SettingsLib/src/com/android/settingslib/Utils.java
+index 505cfeac220..56d9e13a028 100644
+--- a/packages/SettingsLib/src/com/android/settingslib/Utils.java
++++ b/packages/SettingsLib/src/com/android/settingslib/Utils.java
+@@ -30,6 +30,8 @@
+ import com.android.settingslib.wrapper.LocationManagerWrapper;
+ import java.text.NumberFormat;
+ 
++import com.android.internal.util.custom.thermal.ThermalController;
++
+ public class Utils {
+ 
+     private static final String CURRENT_MODE_KEY = "CURRENT_MODE";
+@@ -286,6 +288,7 @@ public static boolean isSystemPackage(Resources resources, PackageManager pm, Pa
+                 || pkg.packageName.equals(sServicesSystemSharedLibPackageName)
+                 || pkg.packageName.equals(sSharedSystemSharedLibPackageName)
+                 || pkg.packageName.equals(PrintManager.PRINT_SPOOLER_PACKAGE_NAME)
++                || pkg.packageName.equals(ThermalController.SERVICE_PACKAGE)
+                 || isDeviceProvisioningPackage(resources, pkg.packageName);
+     }
+ 
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 58e5b8b4726..1132577fbf7 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -27343,4 +27343,9 @@ public void alwaysShowUnsupportedCompileSdkWarning(ComponentName activity) {
+             }
+         }
+     }
++
++    Context getContext() {
++        return mContext;
++    }
++
+ }
+diff --git a/services/core/java/com/android/server/am/ActivityStack.java b/services/core/java/com/android/server/am/ActivityStack.java
+index be97a74f048..8189b14d247 100644
+--- a/services/core/java/com/android/server/am/ActivityStack.java
++++ b/services/core/java/com/android/server/am/ActivityStack.java
+@@ -168,6 +168,8 @@
+ import java.util.Objects;
+ import java.util.Set;
+ 
++import com.android.internal.util.custom.thermal.ThermalController;
++
+ /**
+  * State and management of a single stack of activities.
+  */
+@@ -2435,8 +2437,12 @@ private boolean resumeTopActivityInnerLocked(ActivityRecord prev, ActivityOption
+                 (next.appInfo.packageName, getWindowingMode() == WINDOWING_MODE_FULLSCREEN);
+         }
+ 
+-        // If we are currently pausing an activity, then don't do anything
+-        // until that is done.
++        String nextActivePackageName = next.intent.getComponent().getPackageName();
++        if (prev != next) {
++            ThermalController.sendActivePackageChangedBroadcast(nextActivePackageName, mService.getContext());
++        }
++
++        // If we are currently pausing an activity, then don't do anything until that is done.
+         if (!mStackSupervisor.allPausedActivitiesComplete()) {
+             if (DEBUG_SWITCH || DEBUG_PAUSE || DEBUG_STATES) Slog.v(TAG_PAUSE,
+                     "resumeTopActivityLocked: Skip resume: some activity pausing.");
+diff --git a/services/core/java/com/android/server/power/Notifier.java b/services/core/java/com/android/server/power/Notifier.java
+index eecf17acba3..d9c50ea4b6b 100644
+--- a/services/core/java/com/android/server/power/Notifier.java
++++ b/services/core/java/com/android/server/power/Notifier.java
+@@ -57,6 +57,8 @@
+ import com.android.server.policy.WindowManagerPolicy;
+ import com.android.server.statusbar.StatusBarManagerInternal;
+ 
++import com.android.internal.util.custom.thermal.ThermalController;
++
+ /**
+  * Sends broadcasts about important power state changes.
+  * <p>
+@@ -717,6 +719,7 @@ private void sendGoToSleepBroadcast() {
+         }
+ 
+         if (mActivityManagerInternal.isSystemReady()) {
++            ThermalController.sendActivePackageChangedBroadcast("", mContext);
+             mContext.sendOrderedBroadcastAsUser(mScreenOffIntent, UserHandle.ALL, null,
+                     mGoToSleepBroadcastDone, mHandler, 0, null, null);
+         } else {

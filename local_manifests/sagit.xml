@@ -15,6 +15,7 @@
   <project name="nitrogen-project/android_hardware_qcom_display-caf-msm8998" path="hardware/qcom/display-caf-msm8998" remote="github" revision="p" />
   <project name="nitrogen-project/android_hardware_qcom_media-caf-msm8998" path="hardware/qcom/media-caf-msm8998" remote="github" revision="p" />
   <project name="verevka/android_prebuilts_clang_host_linux-x86_clang-r346389" path="prebuilts/clang/host/linux-x86/clang-r346389" remote="github" revision="8.1" />
+  <project name="PixelExperience/packages_apps_ThermalController" path="packages/apps/ThermalController" remote="github" revision="pie" />
 
   <remove-project name="vendor_nxp_opensource_packages_apps_Nfc" />
   <remove-project name="vendor_nxp_opensource_halimpl" />

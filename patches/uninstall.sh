@@ -2,7 +2,7 @@ echo $1
 rootdirectory="$PWD"
 # ---------------------------------
 
-dirs="frameworks/base"
+dirs="frameworks/base packages/apps/Settings"
 
 for dir in $dirs ; do
 	cd $rootdirectory

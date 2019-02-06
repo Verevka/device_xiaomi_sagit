@@ -1,0 +1,221 @@
+From 59aefa29cf35bc31eaa75833954c42178d156f10 Mon Sep 17 00:00:00 2001
+From: Henrique Silva <jhenrique09.mcz@hotmail.com>
+Date: Thu, 31 Jan 2019 18:12:02 -0200
+Subject: [PATCH] Implement per-app thermal control [1/3]
+
+Change-Id: Ie5f1856fab4c76f750a98cc60a15c20826ddb282
+Signed-off-by: Henrique Silva <jhenrique09.mcz@hotmail.com>
+
+# Conflicts:
+#	AndroidManifest.xml
+#	res/values/custom_arrays.xml
+---
+ AndroidManifest.xml                           |  3 +
+ res/values/custom_arrays.xml                  | 20 ++++
+ res/values/custom_strings.xml                 | 10 ++
+ res/xml/app_info_settings.xml                 | 10 ++
+ .../appinfo/AppInfoDashboardFragment.java     |  1 +
+ ...rmalControlPerAppPreferenceController.java | 99 +++++++++++++++++++
+ 6 files changed, 143 insertions(+)
+ create mode 100644 src/com/android/settings/applications/appinfo/ThermalControlPerAppPreferenceController.java
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 546a3ef10e..98028f1b3a 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -95,6 +95,9 @@
+     <uses-permission android:name="android.permission.USE_RESERVED_DISK" />
+     <uses-permission android:name="android.permission.MANAGE_SCOPED_ACCESS_DIRECTORY_PERMISSIONS" />
+ 
++    <!-- Thermal controller -->
++    <uses-permission android:name="org.pixelexperience.thermalcontroller.MANAGE_SETTINGS" />
++
+     <application android:label="@string/settings_label"
+             android:icon="@drawable/ic_launcher_settings"
+             android:taskAffinity=""
+diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
+index a313880f81..264d97d320 100644
+--- a/res/values/custom_arrays.xml
++++ b/res/values/custom_arrays.xml
+@@ -23,4 +23,24 @@
+         <item>@string/security_settings_fingerprint_sensor_location_left</item>
+         <item>@string/security_settings_fingerprint_sensor_location_right</item>
+     </string-array>
++
++    <!-- Thermal control per app -->
++    <string-array name="thermal_control_per_app_entries" translatable="false">
++        <item>@string/thermal_control_per_app_default</item>
++        <item>@string/thermal_control_per_app_benchmark</item>
++        <item>@string/thermal_control_per_app_games</item>
++        <item>@string/thermal_control_per_app_browser</item>
++        <item>@string/thermal_control_per_app_video_playback</item>
++        <item>@string/thermal_control_per_app_dialer</item>
++        <item>@string/thermal_control_per_app_camera</item>
++    </string-array>
++    <string-array name="thermal_control_per_app_values" translatable="false">
++        <item>0</item>
++        <item>10</item>
++        <item>9</item>
++        <item>11</item>
++        <item>14</item>
++        <item>8</item>
++        <item>12</item>
++    </string-array>
+ </resources>
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 9042b016a5..6467da61d8 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -104,4 +104,14 @@
+     <string name="ringtone1_title">Phone ringtone - SIM 1</string>
+     <string name="ringtone2_title">Phone ringtone - SIM 2</string>
+ 
++    <!-- Thermal control per app -->
++    <string name="thermal_control_per_app">Optimization profile</string>
++    <string name="thermal_control_per_app_default">No optimization</string>
++    <string name="thermal_control_per_app_benchmark">Performance</string>
++    <string name="thermal_control_per_app_games">Games</string>
++    <string name="thermal_control_per_app_browser">Browser</string>
++    <string name="thermal_control_per_app_video_playback">Video playback</string>
++    <string name="thermal_control_per_app_dialer">Dialer</string>
++    <string name="thermal_control_per_app_camera">Camera</string>
++
+ </resources>
+diff --git a/res/xml/app_info_settings.xml b/res/xml/app_info_settings.xml
+index 2c766bbf24..c7f58d63d6 100644
+--- a/res/xml/app_info_settings.xml
++++ b/res/xml/app_info_settings.xml
+@@ -72,6 +72,16 @@
+         android:title="@string/time_spent_in_app_pref_title"
+         settings:controller="com.android.settings.applications.appinfo.TimeSpentInAppPreferenceController" />
+ 
++    <ListPreference
++        android:key="thermal_control_per_app"
++        android:dialogTitle="@string/thermal_control_per_app"
++        android:title="@string/thermal_control_per_app"
++        android:summary="%s"
++        android:entries="@array/thermal_control_per_app_entries"
++        android:entryValues="@array/thermal_control_per_app_values"
++        android:defaultValue="0"
++        settings:controller="com.android.settings.applications.appinfo.ThermalControlPerAppPreferenceController" />
++
+     <Preference
+         android:key="battery"
+         android:title="@string/power_usage_summary_title"
+diff --git a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
+index 597884b1c2..b098411903 100755
+--- a/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
++++ b/src/com/android/settings/applications/appinfo/AppInfoDashboardFragment.java
+@@ -156,6 +156,7 @@ public void onAttach(Context context) {
+         super.onAttach(context);
+         final String packageName = getPackageName();
+         use(TimeSpentInAppPreferenceController.class).setPackageName(packageName);
++        use(ThermalControlPerAppPreferenceController.class).setPackageName(packageName);
+ 
+         use(AppDataUsagePreferenceController.class).setParentFragment(this);
+         final AppInstallerInfoPreferenceController installer =
+diff --git a/src/com/android/settings/applications/appinfo/ThermalControlPerAppPreferenceController.java b/src/com/android/settings/applications/appinfo/ThermalControlPerAppPreferenceController.java
+new file mode 100644
+index 0000000000..29e871b255
+--- /dev/null
++++ b/src/com/android/settings/applications/appinfo/ThermalControlPerAppPreferenceController.java
+@@ -0,0 +1,99 @@
++/*
++ * Copyright (C) 2019 The PixelExperience Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.applications.appinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageManager;
++import android.content.pm.ResolveInfo;
++import android.support.v7.preference.Preference;
++import android.support.v7.preference.Preference.OnPreferenceChangeListener;
++import android.support.v7.preference.ListPreference;
++import android.support.v7.preference.PreferenceScreen;
++import android.text.TextUtils;
++
++import com.android.settings.core.BasePreferenceController;
++
++import java.util.List;
++import java.util.Arrays;
++
++import com.android.internal.util.custom.thermal.ThermalController;
++
++public class ThermalControlPerAppPreferenceController extends BasePreferenceController implements Preference.OnPreferenceChangeListener{
++
++    private final PackageManager mPackageManager;
++    private String mPackageName;
++    private ListPreference mPref;
++    private final String[] hideApps = {"com.android.settings", "com.android.documentsui",
++        "com.android.fmradio", "com.caf.fmradio", "com.android.stk",
++        "com.google.android.calculator", "com.google.android.calendar",
++        "com.google.android.deskclock", "com.google.android.contacts",
++        "com.google.android.apps.messaging", "com.google.android.googlequicksearchbox"};
++
++    public ThermalControlPerAppPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++        mPackageManager = context.getPackageManager();
++    }
++
++    public void setPackageName(String packageName) {
++        mPackageName = packageName;
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        if (TextUtils.isEmpty(mPackageName) || mPackageManager.getLaunchIntentForPackage(mPackageName) == null ||
++                isLauncherApp(mPackageName) || !ThermalController.isAvailable(mContext) ||
++                Arrays.asList(hideApps).contains(mPackageName)) {
++            return UNSUPPORTED_ON_DEVICE;
++        }
++        return AVAILABLE;
++    }
++
++    private boolean isLauncherApp(String packageName) {
++        Intent intent = new Intent(Intent.ACTION_MAIN);
++        intent.addCategory(Intent.CATEGORY_HOME);
++        ResolveInfo res = mPackageManager.resolveActivity(intent, 0);
++        if (res.activityInfo != null && res.activityInfo.packageName.equals(packageName)) {
++            return true;
++        }
++        return false;
++    }
++
++    @Override
++    public void displayPreference(PreferenceScreen screen) {
++        super.displayPreference(screen);
++        mPref = (ListPreference) screen.findPreference(getPreferenceKey());
++        mPref.setValue(Integer.toString(ThermalController.getProfile(mPackageName, mContext)));
++        mPref.setOnPreferenceChangeListener(this);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        int profile = Integer.parseInt((String) newValue);
++        ThermalController.setProfile(mPackageName, profile, mContext);
++        refreshSummary(preference);
++        return true;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        int value = ThermalController.getProfile(mPackageName, mContext);
++        int index = mPref.findIndexOfValue(Integer.toString(value));
++        return mPref.getEntries()[index];
++    }
++
++}
