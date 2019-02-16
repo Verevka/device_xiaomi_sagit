@@ -11,9 +11,9 @@
   <remove-project name="hardware_qcom_media" />
   <project name="verevka/device_xiaomi_sagit" path="device/xiaomi/sagit" remote="github" revision="9.0-CAF" />
   <project name="verevka/device_xiaomi_msm8998-common" path="device/xiaomi/msm8998-common" remote="github" revision="9.0-CAF" />
-  <project name="nitrogen-project/android_hardware_qcom_audio-caf-msm8998" path="hardware/qcom/audio-caf-msm8998" remote="github" revision="p" />
-  <project name="nitrogen-project/android_hardware_qcom_display-caf-msm8998" path="hardware/qcom/display-caf-msm8998" remote="github" revision="p" />
-  <project name="nitrogen-project/android_hardware_qcom_media-caf-msm8998" path="hardware/qcom/media-caf-msm8998" remote="github" revision="p" />
+  <project name="AOSPA/android_hardware_qcom_audio" path="hardware/qcom/audio" remote="github" revision="pie-8998" />
+  <project name="AOSPA/android_hardware_qcom_display" path="hardware/qcom/display" remote="github" revision="pie-8998" />
+  <project name="AOSPA/android_hardware_qcom_media" path="hardware/qcom/media" remote="github" revision="pie-8998" />
   <project name="verevka/android_prebuilts_clang_host_linux-x86_clang-r346389" path="prebuilts/clang/host/linux-x86/clang-r346389" remote="github" revision="8.1" />
 
   <remove-project name="vendor_nxp_opensource_packages_apps_Nfc" />
