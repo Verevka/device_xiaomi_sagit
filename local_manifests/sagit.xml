@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
+
   <remote  name="gitlab"
            fetch="https://gitlab.com/" />
   <project name="ShevT/android_kernel_xiaomi_msm8998" path="kernel/xiaomi/msm8998" remote="gitlab" revision="pie-7.4" />
   <project name="ShevT/proprietary_vendor_xiaomi" path="vendor/xiaomi" remote="gitlab" revision="pie" />
   <project name="ShevT/XiaomiCustom" path="vendor/XiaomiCustom" remote="gitlab" revision="pie" />
 
+  <remove-project name="vendor_qcom_opensource_data-ipa-cfg-mgr" />
   <remove-project name="hardware_qcom_audio" />
   <remove-project name="hardware_qcom_display" />
   <remove-project name="hardware_qcom_media" />
-  <project name="verevka/device_xiaomi_sagit" path="device/xiaomi/sagit" remote="github" revision="9.0-CAF" />
-  <project name="verevka/device_xiaomi_msm8998-common" path="device/xiaomi/msm8998-common" remote="github" revision="9.0-CAF" />
+
+  <project name="LineageOS/android_external_ant-wireless_antradio-library" path="external/ant-wireless/antradio-library" remote="github" revision="lineage-16.0" />
   <project name="AOSPA/android_hardware_qcom_audio" path="hardware/qcom/audio" remote="github" revision="pie-8998" />
   <project name="AOSPA/android_hardware_qcom_display" path="hardware/qcom/display" remote="github" revision="pie-8998" />
   <project name="AOSPA/android_hardware_qcom_media" path="hardware/qcom/media" remote="github" revision="pie-8998" />
+  <project name="verevka/device_xiaomi_sagit" path="device/xiaomi/sagit" remote="github" revision="Derp-CAF" />
+  <project name="verevka/device_xiaomi_msm8998-common" path="device/xiaomi/msm8998-common" remote="github" revision="Derp-CAF" />
   <project name="verevka/android_prebuilts_clang_host_linux-x86_clang-r346389" path="prebuilts/clang/host/linux-x86/clang-r346389" remote="github" revision="8.1" />
+  <project name="LineageOS/android_packages_resources_devicesettings" path="packages/resources/devicesettings" remote="github" revision="lineage-16.0" />
 
-  <remove-project name="vendor_nxp_opensource_packages_apps_Nfc" />
+  <remove-project name="vendor_nxp_opensource_commonsys_packages_apps_Nfc" />
   <remove-project name="vendor_nxp_opensource_halimpl" />
   <remove-project name="platform/vendor/nxp/opensource/frameworks" />
   <remove-project name="platform/vendor/nxp/opensource/hidlimpl" />

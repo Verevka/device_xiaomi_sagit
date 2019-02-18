@@ -15,4 +15,4 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/citrus_sagit.mk
+    $(LOCAL_DIR)/derp_sagit.mk
