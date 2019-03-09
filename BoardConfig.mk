@@ -21,6 +21,9 @@ include device/xiaomi/msm8998-common/BoardConfigCommon.mk
 
 DEVICE_PATH := device/xiaomi/sagit
 
+# Display
+TARGET_USES_COLOR_METADATA := true
+
 # HIDL
 DEVICE_MANIFEST_FILE += $(DEVICE_PATH)/manifest.xml
 
